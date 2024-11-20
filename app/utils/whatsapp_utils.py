@@ -41,18 +41,28 @@ def send_message(data):
     try:
         response = requests.post(
             url, data=data, headers=headers, timeout=10
-        )  # 10 seconds timeout as an example
-        response.raise_for_status()  # Raises an HTTPError if the HTTP request returned an unsuccessful status code
+        )
+        # Log the full response details for debugging
+        logging.info(f"Response Status: {response.status_code}")
+        logging.info(f"Response Headers: {response.headers}")
+        logging.info(f"Response Body: {response.text}")
+        
+        response.raise_for_status()
     except requests.Timeout:
         logging.error("Timeout occurred while sending message")
         return jsonify({"status": "error", "message": "Request timed out"}), 408
-    except (
-        requests.RequestException
-    ) as e:  # This will catch any general request exception
-        logging.error(f"Request failed due to: {e}")
+    except requests.HTTPError as e:
+        error_msg = f"HTTP Error occurred: {str(e)}\nResponse: {e.response.text}"
+        logging.error(error_msg)
+        return jsonify({
+            "status": "error", 
+            "message": "Failed to send message",
+            "details": e.response.text
+        }), e.response.status_code
+    except requests.RequestException as e:
+        logging.error(f"Request failed due to: {str(e)}")
         return jsonify({"status": "error", "message": "Failed to send message"}), 500
     else:
-        # Process the response as normal
         log_http_response(response)
         return response
 
